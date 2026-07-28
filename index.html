@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>VaultX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root[data-theme='dark']{
+    --bg:#121212; --surface:#1A1A1A; --surface-2:#232323; --surface-3:#2A2A2A; --border:rgba(212,175,55,0.16);
+    --text:#F5F5F7; --muted:#A0A0A0; --muted-2:#6E6E6E;
+    --gold:#D4AF37; --brass:#C5A059; --gold-text:#161208; --gold-soft:#2B2413; --gold-soft-text:#E7C878;
+    --jade:#5CAE85; --jade-soft:#17281E; --jade-soft-text:#8FD6AC;
+    --rust:#C2704F; --rust-soft:#2E1E16; --rust-soft-text:#E0A184;
+    --ring-track:rgba(212,175,55,0.14); --overlay:rgba(0,0,0,0.7);
+    --shadow:0 1px 2px rgba(0,0,0,0.55), 0 18px 44px rgba(0,0,0,0.6);
+    --gold-glow:0 0 0 1px rgba(212,175,55,0.22), 0 10px 30px rgba(212,175,55,0.14);
+  }
+  :root[data-theme='light']{
+    --bg:#F6F3EC; --surface:#FFFFFF; --surface-2:#EFEAE0; --surface-3:#E6DFCF; --border:rgba(156,122,60,0.22);
+    --text:#1C1A15; --muted:#79735F; --muted-2:#AFA790;
+    --gold:#9C7A3C; --brass:#B08F52; --gold-text:#FFFFFF; --gold-soft:#F0E4C8; --gold-soft-text:#7A5E28;
+    --jade:#3E8C63; --jade-soft:#DFEEE4; --jade-soft-text:#2A6B48;
+    --rust:#A85A3A; --rust-soft:#F3E1D4; --rust-soft-text:#864527;
+    --ring-track:rgba(156,122,60,0.18); --overlay:rgba(24,22,17,0.45);
+    --shadow:0 1px 2px rgba(24,22,17,0.06), 0 10px 24px rgba(24,22,17,0.08);
+    --gold-glow:0 0 0 1px rgba(156,122,60,0.18), 0 8px 20px rgba(156,122,60,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:'Inter',ui-sans-serif,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .fd{ font-family:'Playfair Display',Georgia,serif; }
+  .tab-nums{ font-variant-numeric:tabular-nums; }
+  .vx-root{ display:flex; justify-content:center; min-height:100vh; }
+  .vx-app{ width:100%; max-width:448px; min-height:100vh; position:relative; padding-bottom:96px; }
+  .card{ background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); }
+  .input{ background:var(--surface-2); border:1px solid var(--border); color:var(--text); }
+  .input::placeholder{ color:var(--muted-2); }
+  .divider{ border-top:1px dashed var(--border); }
+  .no-scroll::-webkit-scrollbar{ display:none; }
+  .no-scroll{ -ms-overflow-style:none; scrollbar-width:none; }
+  .btn-primary{ background:linear-gradient(135deg, #E8C874, var(--gold) 45%, var(--brass)); color:var(--gold-text); box-shadow:var(--gold-glow); transition:transform .3s ease, box-shadow .3s ease; }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 0 0 1px rgba(212,175,55,0.3), 0 14px 36px rgba(212,175,55,0.22); }
+  .btn-primary:active{ transform:scale(0.98) translateY(0); }
+  .chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); }
+  .chip.active{ background:var(--gold); border-color:var(--gold); color:var(--gold-text); }
+  .icon-btn{ color:var(--muted); }
+  a, button, input, select { font-family:inherit; }
+  button{ cursor:pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+  .ring circle{ transition:stroke-dashoffset .5s ease; }
+</style>
+</head>
+<body>
+<div class="vx-root"><div id="app" class="vx-app"></div></div>
+<script>
+/* ============================== ICONS ============================== */
+const ICONS = {
+  home:s=>`<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h5v-6h4v6h5v-9"/>`,
+  list:s=>`<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>`,
+  budget:s=>`<circle cx="12" cy="12" r="9"/><path d="M12 6.5v11M9.3 9.2c0-1.4 1.2-2.4 2.7-2.4s2.7.9 2.7 2c0 2.1-5.4 1.6-5.4 3.7 0 1.1 1.2 2.1 2.7 2.1s2.7-1 2.7-2.4"/>`,
+  chart:s=>`<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`,
+  more:s=>`<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>`,
+  plus:s=>`<path d="M12 5v14M5 12h14"/>`,
+  x:s=>`<path d="M6 6l12 12M18 6L6 18"/>`,
+  chevronLeft:s=>`<path d="M15 5l-7 7 7 7"/>`,
+  chevronRight:s=>`<path d="M9 5l7 7-7 7"/>`,
+  chevronDown:s=>`<path d="M5 9l7 7 7-7"/>`,
+  search:s=>`<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>`,
+  sliders:s=>`<path d="M4 6h9M17 6h3M4 12h2M10 12h10M4 18h11M19 18h1"/><circle cx="14" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>`,
+  sun:s=>`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>`,
+  moon:s=>`<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>`,
+  wallet:s=>`<path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M16.5 12h2.5v3h-2.5a1.5 1.5 0 0 1 0-3z"/>`,
+  bank:s=>`<path d="M3 21h18M4 21V10M20 21V10M2 10l10-6 10 6M8 21v-7M12 21v-7M16 21v-7"/>`,
+  card:s=>`<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>`,
+  phone:s=>`<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 19h2"/>`,
+  trash:s=>`<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/>`,
+  edit:s=>`<path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M13 6l3 3"/>`,
+  copy:s=>`<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/>`,
+  download:s=>`<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>`,
+  upload:s=>`<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>`,
+  trendUp:s=>`<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>`,
+  trendDown:s=>`<path d="M3 7l6 6 4-4 8 8M15 17h6v-6"/>`,
+  alert:s=>`<path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>`,
+  refresh:s=>`<path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 10a8 8 0 0 0-14.9-3.6M4 14a8 8 0 0 0 14.9 3.6"/>`,
+  scale:s=>`<path d="M12 3v18M6 8l-3 6a3 3 0 0 0 6 0zM18 8l3 6a3 3 0 0 0-6 0z"/><path d="M6 8h12M4 21h16"/>`,
+  folder:s=>`<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>`,
+  check:s=>`<path d="M4 12l5 5L20 6"/>`,
+  tag:s=>`<path d="M20 12l-8 8-9-9V4h7z"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/>`,
+  lock:s=>`<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>`,
+};
+function ic(name, size=18, color='currentColor'){
+  const body = (ICONS[name] || ICONS.tag)();
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+
+/* ============================== CONSTANTS ============================== */
+const PALETTE = ["#D4AF37","#5CAE85","#C2704F","#7C93BF","#A886C4","#5FA6A3","#C5A059","#8FA3C9","#B26E86","#8FBF9E"];
+const DEFAULT_EXPENSE_CATS = ["Food","Transport","Bills","Shopping","Health","Entertainment"];
+const DEFAULT_INCOME_CATS = ["Salary","Overtime/Claims","Allowance","Freelance/Side Income"];
+const ACCOUNT_TYPES = [
+  { value:"bank", label:"Bank Account", icon:"bank" },
+  { value:"cash", label:"Cash", icon:"wallet" },
+  { value:"credit", label:"Credit Card", icon:"card" },
+  { value:"ewallet", label:"E-Wallet", icon:"phone" },
+];
+
+/* ============================== UTILS ============================== */
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function toCents(v){ const n = parseFloat(String(v||'0').replace(/,/g,'')); return isFinite(n) ? Math.round(n*100) : 0; }
+function formatMYR(cents, showSign=false){
+  const neg = cents < 0; const abs = Math.abs(cents||0);
+  const str = (abs/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `${neg?'-':(showSign?'+':'')}RM ${str}`;
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function monthKey(d){ return (d||'').slice(0,7); }
+function ymLabel(ym){ const [y,m]=ym.split('-'); return new Date(Number(y),Number(m)-1,1).toLocaleDateString('en-MY',{month:'short',year:'2-digit'}); }
+function addMonths(ym,n){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-1+n,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function niceDate(dateStr){
+  const today = todayStr(); const yest = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if (dateStr===today) return 'Today';
+  if (dateStr===yest) return 'Yesterday';
+  return new Date(dateStr+'T00:00:00').toLocaleDateString('en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* storage — plain browser localStorage (synchronous) */
+function loadKey(key, fallback){
+  try{
+    if (typeof localStorage === 'undefined') return fallback;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+function saveKey(key, value){
+  try{
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch(e){ console.error('save failed', key, e); }
+}
+function downloadTextFile(filename, text){
+  const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+/* ============================== STATE ============================== */
+let state = {
+  loaded:false, storageOk:true,
+  accounts:[], categories:[], transactions:[], recurringRules:[], budgets:{},
+  settings:{ theme:'dark', seeded:false, lastAccountId:null, lastCategoryId:{}, activeTag:'all' },
+  tab:'dashboard', moreView:null,
+  quickAdd:null,
+  txnFilterOpen:false,
+  txnFilter:{ search:'', range:'all', accountId:'all', categoryId:'all', tag:'all', type:'all' },
+  reportRange:'thisMonth', trendMonths:6,
+  toast:null,
+  confirmDelete:null,
+  editingAccount:null, editingCategory:null, categoriesTypeTab:'expense',
+  budgetEditing:null, budgetDraft:'',
+};
+let charts = { pie:null, bar:null };
+let toastTimer = null;
+
+function showToast(msg){
+  state.toast = msg; render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ state.toast=null; render(); }, 2600);
+}
+
+/* ============================== INIT ============================== */
+function init(){
+  let storageOk = true;
+  try {
+    if (typeof localStorage === 'undefined') storageOk = false;
+    else { localStorage.setItem('__vx_test__','1'); localStorage.removeItem('__vx_test__'); }
+  } catch { storageOk = false; }
+  state.storageOk = storageOk;
+
+  const acc = loadKey('vx_accounts', []);
+  const cats = loadKey('vx_categories', []);
+  const txns = loadKey('vx_transactions', []);
+  const rules = loadKey('vx_recurring', []);
+  const bud = loadKey('vx_budgets', {});
+  const sett = loadKey('vx_settings', { theme:'dark', seeded:false, lastAccountId:null, lastCategoryId:{}, activeTag:'all' });
+
+  let finalAccounts=acc, finalCategories=cats, finalSettings=sett;
+  if (!sett.seeded){
+    finalCategories = [
+      ...DEFAULT_EXPENSE_CATS.map((name,i)=>({ id:uid(), name, type:'expense', isDefault:true, color:PALETTE[i%PALETTE.length] })),
+      ...DEFAULT_INCOME_CATS.map((name,i)=>({ id:uid(), name, type:'income', isDefault:true, color:PALETTE[(i+6)%PALETTE.length] })),
+    ];
+    finalAccounts = [
+      { id:uid(), name:'Cash', type:'cash', color:PALETTE[1], startingBalanceCents:0 },
+      { id:uid(), name:"Touch 'n Go eWallet", type:'ewallet', color:PALETTE[3], startingBalanceCents:0 },
+    ];
+    finalSettings = { ...sett, seeded:true };
+    saveKey('vx_categories', finalCategories);
+    saveKey('vx_accounts', finalAccounts);
+    saveKey('vx_settings', finalSettings);
+  }
+  state.accounts=finalAccounts; state.categories=finalCategories; state.transactions=txns;
+  state.recurringRules=rules; state.budgets=bud; state.settings=finalSettings;
+  document.documentElement.setAttribute('data-theme', finalSettings.theme || 'dark');
+  state.loaded = true;
+  render();
+  generateDueRecurring();
+}
+
+/* ============================== RECURRING GENERATION ============================== */
+function generateDueRecurring(){
+  if (state.recurringRules.length===0) return;
+  const curYM = monthKey(todayStr());
+  let newTxns = [];
+  state.recurringRules = state.recurringRules.map(rule=>{
+    let cursor = rule.lastGeneratedYM; let guard=0; const rows=[];
+    while (cursor < curYM && guard < 36){
+      cursor = addMonths(cursor, 1);
+      const [y,m] = cursor.split('-').map(Number);
+      const day = Math.min(rule.dayOfMonth, daysInMonth(y,m));
+      const date = `${cursor}-${String(day).padStart(2,'0')}`;
+      rows.push({ id:uid(), type:rule.type, amountCents:rule.amountCents, date, categoryId:rule.categoryId, accountId:rule.accountId, note:rule.note, tag:rule.tag, recurringId:rule.id });
+      guard++;
+    }
+    if (rows.length) newTxns = newTxns.concat(rows);
+    return rows.length ? { ...rule, lastGeneratedYM: cursor } : rule;
+  });
+  if (newTxns.length){
+    state.transactions = state.transactions.concat(newTxns);
+    persist('vx_transactions', state.transactions);
+    persist('vx_recurring', state.recurringRules);
+    showToast(`Generated ${newTxns.length} recurring transaction${newTxns.length===1?'':'s'}`);
+  }
+}
+
+/* ============================== PERSISTENCE ============================== */
+function persist(key, value){ saveKey(key, value); }
+function setAccounts(v){ state.accounts=v; persist('vx_accounts', v); }
+function setCategories(v){ state.categories=v; persist('vx_categories', v); }
+function setTransactions(v){ state.transactions=v; persist('vx_transactions', v); }
+function setRecurringRules(v){ state.recurringRules=v; persist('vx_recurring', v); }
+function setBudgets(v){ state.budgets=v; persist('vx_budgets', v); }
+function setSettings(v){ state.settings=v; persist('vx_settings', v); document.documentElement.setAttribute('data-theme', v.theme); }
+
+/* ============================== DERIVED DATA ============================== */
+function accountBalance(acc, txns){
+  const sign = acc.type==='credit' ? -1 : 1;
+  let bal = acc.startingBalanceCents;
+  for (const t of txns){ if (t.accountId!==acc.id) continue; bal += sign*(t.type==='income'?t.amountCents:-t.amountCents); }
+  return bal;
+}
+function matchesTag(t, tag){ return tag==='all' || t.tag===tag; }
+function inRange(dateStr, range){
+  if (range==='all') return true;
+  const now = new Date(); const d = new Date(dateStr+'T00:00:00');
+  if (range==='thisMonth') return monthKey(dateStr)===monthKey(todayStr());
+  if (range==='lastMonth') return monthKey(dateStr)===addMonths(monthKey(todayStr()),-1);
+  if (range==='last3'){ const c=new Date(now); c.setMonth(c.getMonth()-3); return d>=c; }
+  if (range==='last6'){ const c=new Date(now); c.setMonth(c.getMonth()-6); return d>=c; }
+  return true;
+}
+function derive(){
+  const catById = Object.fromEntries(state.categories.map(c=>[c.id,c]));
+  const accById = Object.fromEntries(state.accounts.map(a=>[a.id,a]));
+  const expenseCats = state.categories.filter(c=>c.type==='expense');
+  const incomeCats = state.categories.filter(c=>c.type==='income');
+  const balances = Object.fromEntries(state.accounts.map(a=>[a.id, accountBalance(a, state.transactions)]));
+  const totalAssets = state.accounts.filter(a=>a.type!=='credit').reduce((s,a)=>s+balances[a.id],0);
+  const totalLiabilities = state.accounts.filter(a=>a.type==='credit').reduce((s,a)=>s+balances[a.id],0);
+  const netTotal = totalAssets - totalLiabilities;
+  const curYM = monthKey(todayStr());
+  const thisMonthTxns = state.transactions.filter(t=>monthKey(t.date)===curYM && matchesTag(t, state.settings.activeTag));
+  const monthIncome = thisMonthTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amountCents,0);
+  const monthExpense = thisMonthTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amountCents,0);
+  const monthNet = monthIncome - monthExpense;
+  const budgetStatus = expenseCats.filter(c=>state.budgets[c.id]).map(c=>{
+    const spent = thisMonthTxns.filter(t=>t.type==='expense' && t.categoryId===c.id).reduce((s,t)=>s+t.amountCents,0);
+    const limit = state.budgets[c.id];
+    return { cat:c, spent, limit, pct: limit ? (spent/limit)*100 : 0 };
+  });
+  const overBudget = budgetStatus.filter(b=>b.pct>=100);
+  return { catById, accById, expenseCats, incomeCats, balances, totalAssets, totalLiabilities, netTotal, curYM, thisMonthTxns, monthIncome, monthExpense, monthNet, budgetStatus, overBudget };
+}
+function filteredTxns(D){
+  return state.transactions
+    .filter(t=>inRange(t.date, state.txnFilter.range))
+    .filter(t=>state.txnFilter.accountId==='all' || t.accountId===state.txnFilter.accountId)
+    .filter(t=>state.txnFilter.categoryId==='all' || t.categoryId===state.txnFilter.categoryId)
+    .filter(t=>state.txnFilter.tag==='all' || t.tag===state.txnFilter.tag)
+    .filter(t=>state.txnFilter.type==='all' || t.type===state.txnFilter.type)
+    .filter(t=>{
+      if (!state.txnFilter.search) return true;
+      const s = state.txnFilter.search.toLowerCase();
+      return (t.note||'').toLowerCase().includes(s) || (D.catById[t.categoryId]?.name||'').toLowerCase().includes(s) || (D.accById[t.accountId]?.name||'').toLowerCase().includes(s);
+    })
+    .sort((a,b)=>b.date.localeCompare(a.date));
+}
+function groupByDate(txns){
+  const groups=[]; let last=null;
+  for (const t of txns){ if (t.date!==last){ groups.push({date:t.date, items:[]}); last=t.date; } groups[groups.length-1].items.push(t); }
+  return groups;
+}
+
+/* ============================== ACTIONS ============================== */
+function setTab(t){ state.tab=t; state.moreView=null; render(); }
+function setMoreView(v){ state.moreView=v; render(); }
+function toggleTheme(){ setSettings({...state.settings, theme: state.settings.theme==='dark'?'light':'dark'}); render(); }
+function setActiveTag(tag){ setSettings({...state.settings, activeTag:tag}); render(); }
+
+function openQuickAdd(prefill){
+  const D = derive();
+  const type = (prefill && prefill.type) || 'expense';
+  const cats = type==='income' ? D.incomeCats : D.expenseCats;
+  const defaultCat = (state.settings.lastCategoryId && state.settings.lastCategoryId[type] && D.catById[state.settings.lastCategoryId[type]]) ? state.settings.lastCategoryId[type] : (cats[0]?.id || '');
+  const defaultAcc = (state.settings.lastAccountId && D.accById[state.settings.lastAccountId]) ? state.settings.lastAccountId : (state.accounts[0]?.id || '');
+  state.quickAdd = { editingId:null, type, amount:'', categoryId:defaultCat, accountId:defaultAcc, date:todayStr(), tag:'personal', note:'', repeatMonthly:false, ...(prefill||{}) };
+  render();
+}
+function openEditTxn(id){
+  const t = state.transactions.find(x=>x.id===id); if(!t) return;
+  state.quickAdd = { editingId:t.id, type:t.type, amount:(t.amountCents/100).toString(), categoryId:t.categoryId, accountId:t.accountId, date:t.date, tag:t.tag, note:t.note||'', repeatMonthly:false };
+  render();
+}
+function openDuplicateTxn(id){
+  const t = state.transactions.find(x=>x.id===id); if(!t) return;
+  state.quickAdd = { editingId:null, type:t.type, amount:(t.amountCents/100).toString(), categoryId:t.categoryId, accountId:t.accountId, date:todayStr(), tag:t.tag, note:t.note||'', repeatMonthly:false };
+  render();
+}
+function closeQuickAdd(){ state.quickAdd=null; render(); }
+function qaSetType(type){ const D=derive(); const cats = type==='income'?D.incomeCats:D.expenseCats; state.quickAdd.type=type; state.quickAdd.categoryId = cats[0]?.id||''; render(); }
+function qaSetField(field, value){ state.quickAdd[field]=value; }
+function qaSetFieldRender(field, value){ state.quickAdd[field]=value; render(); }
+function saveQuickAdd(){
+  const amountCents = toCents(state.quickAdd.amount);
+  if (amountCents<=0 || !state.quickAdd.categoryId || !state.quickAdd.accountId){ showToast('Please enter an amount, category and account'); return; }
+  const base = { type:state.quickAdd.type, amountCents, date:state.quickAdd.date, categoryId:state.quickAdd.categoryId, accountId:state.quickAdd.accountId, note:state.quickAdd.note, tag:state.quickAdd.tag };
+  if (state.quickAdd.editingId){
+    setTransactions(state.transactions.map(t=>t.id===state.quickAdd.editingId?{...t,...base}:t));
+    showToast('Transaction updated');
+  } else {
+    setTransactions([...state.transactions, { id:uid(), ...base }]);
+    if (state.quickAdd.repeatMonthly){
+      const d = new Date(state.quickAdd.date+'T00:00:00');
+      setRecurringRules([...state.recurringRules, { id:uid(), ...base, dayOfMonth:d.getDate(), lastGeneratedYM: monthKey(state.quickAdd.date) }]);
+      showToast('Transaction added — will repeat monthly');
+    } else { showToast('Transaction added'); }
+  }
+  setSettings({ ...state.settings, lastAccountId: state.quickAdd.accountId, lastCategoryId: { ...state.settings.lastCategoryId, [state.quickAdd.type]: state.quickAdd.categoryId } });
+  state.quickAdd = null; render();
+}
+function askDeleteTxn(id){ state.confirmDelete = state.transactions.find(t=>t.id===id) || null; render(); }
+function cancelDeleteTxn(){ state.confirmDelete=null; render(); }
+function confirmDeleteTxn(){
+  if (!state.confirmDelete) return;
+  setTransactions(state.transactions.filter(t=>t.id!==state.confirmDelete.id));
+  state.confirmDelete=null; showToast('Transaction deleted'); render();
+}
+
+function openTxnFilter(){ state.txnFilterOpen=true; render(); }
+function closeTxnFilter(){ state.txnFilterOpen=false; render(); }
+function tfSet(field, value){ state.txnFilter[field]=value; render(); }
+function tfClear(){ state.txnFilter = { search:'', range:'all', accountId:'all', categoryId:'all', tag:'all', type:'all' }; render(); }
+
+/* category / account management */
+function ensureUncategorized(type){
+  let c = state.categories.find(c=>c.name==='Uncategorized' && c.type===type);
+  if (c) return c.id;
+  const nc = { id:uid(), name:'Uncategorized', type, isDefault:false, color:'#8A8F98' };
+  setCategories([...state.categories, nc]);
+  return nc.id;
+}
+function deleteCategory(id){
+  const cat = state.categories.find(c=>c.id===id); if(!cat) return;
+  const fallbackId = ensureUncategorized(cat.type);
+  setTransactions(state.transactions.map(t=>t.categoryId===id?{...t,categoryId:fallbackId}:t));
+  setCategories(state.categories.filter(c=>c.id!==id));
+  const nb = {...state.budgets}; delete nb[id]; setBudgets(nb);
+  showToast(`"${cat.name}" deleted`); render();
+}
+function deleteAccount(id){
+  const acc = state.accounts.find(a=>a.id===id); if(!acc) return;
+  const used = state.transactions.filter(t=>t.accountId===id).length;
+  if (used>0){ showToast(`Can't delete — ${used} transaction${used===1?'':'s'} use this account`); render(); return; }
+  setAccounts(state.accounts.filter(a=>a.id!==id));
+  showToast(`"${acc.name}" removed`); render();
+}
+function openNewAccount(){ state.editingAccount = { id:null, name:'', type:'bank', color:PALETTE[0], startingBalance:'0' }; render(); }
+function openEditAccount(id){
+  const a = state.accounts.find(x=>x.id===id); if(!a) return;
+  state.editingAccount = { ...a, startingBalance:(a.startingBalanceCents/100).toString() }; render();
+}
+function closeEditAccount(){ state.editingAccount=null; render(); }
+function eaSet(field,value){ state.editingAccount[field]=value; }
+function eaSetRender(field,value){ state.editingAccount[field]=value; render(); }
+function saveAccount(){
+  const ea = state.editingAccount;
+  if (!ea.name.trim()){ showToast('Please enter an account name'); return; }
+  const acc = { id: ea.id||uid(), name: ea.name.trim(), type: ea.type, color: ea.color, startingBalanceCents: toCents(ea.startingBalance) };
+  setAccounts(ea.id ? state.accounts.map(a=>a.id===ea.id?acc:a) : [...state.accounts, acc]);
+  state.editingAccount=null; showToast(ea.id?'Account updated':'Account added'); render();
+}
+function openNewCategory(){ state.editingCategory = { id:null, name:'', type: state.categoriesTypeTab, color:PALETTE[state.categories.length % PALETTE.length] }; render(); }
+function openEditCategory(id){ const c = state.categories.find(x=>x.id===id); if(!c) return; state.editingCategory = { ...c }; render(); }
+function closeEditCategory(){ state.editingCategory=null; render(); }
+function ecSet(field,value){ state.editingCategory[field]=value; }
+function saveCategory(){
+  const ec = state.editingCategory;
+  if (!ec.name.trim()){ showToast('Please enter a category name'); return; }
+  if (ec.id){
+    setCategories(state.categories.map(c=>c.id===ec.id?{...c,name:ec.name.trim(),color:ec.color}:c));
+    showToast('Category updated');
+  } else {
+    setCategories([...state.categories, { id:uid(), name:ec.name.trim(), type:ec.type, isDefault:false, color:ec.color }]);
+    showToast('Category added');
+  }
+  state.editingCategory=null; render();
+}
+function setCategoriesTypeTab(t){ state.categoriesTypeTab=t; render(); }
+
+/* budgets */
+function openBudgetEdit(catId){ const limit = state.budgets[catId]||0; state.budgetEditing=catId; state.budgetDraft = limit ? (limit/100).toString() : ''; render(); }
+function closeBudgetEdit(){ state.budgetEditing=null; render(); }
+function saveBudgetEdit(){
+  const cents = toCents(state.budgetDraft);
+  setBudgets({ ...state.budgets, [state.budgetEditing]: cents });
+  state.budgetEditing=null; render();
+}
+function removeBudget(catId){ const nb={...state.budgets}; delete nb[catId]; setBudgets(nb); render(); }
+
+/* recurring */
+function removeRecurringRule(id){ setRecurringRules(state.recurringRules.filter(r=>r.id!==id)); showToast('Recurring rule removed'); render(); }
+
+/* csv */
+function handleExport(){
+  if (typeof Papa === 'undefined'){ showToast("Can't export — CSV library failed to load. Check your internet connection."); return; }
+  const D = derive();
+  const rows = state.transactions.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(t=>({
+    Date:t.date, Type:t.type, Category:D.catById[t.categoryId]?.name||'', Account:D.accById[t.accountId]?.name||'',
+    Tag:t.tag, Amount:(t.amountCents/100).toFixed(2), Note:t.note||''
+  }));
+  const csv = Papa.unparse(rows);
+  downloadTextFile(`vaultx-export-${todayStr()}.csv`, csv);
+  showToast('CSV exported');
+}
+function triggerImportFile(){ document.getElementById('vx-import-input').click(); }
+function handleImportFile(fileInput){
+  const file = fileInput.files[0]; if(!file) return;
+  if (typeof Papa === 'undefined'){ showToast("Can't import — CSV library failed to load. Check your internet connection."); fileInput.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const parsed = Papa.parse(e.target.result, { header:true, skipEmptyLines:true });
+    let newAccounts=[...state.accounts], newCategories=[...state.categories], newTxns=[...state.transactions], count=0;
+    for (const row of parsed.data){
+      const norm={}; Object.keys(row).forEach(k=>norm[k.trim().toLowerCase()] = (row[k]||'').toString().trim());
+      const type = (norm.type||'').toLowerCase()==='income' ? 'income':'expense';
+      const amountCents = toCents(norm.amount);
+      if (!amountCents) continue;
+      const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(norm.date) ? norm.date : todayStr();
+      const tag = norm.tag && norm.tag.toLowerCase()==='business' ? 'business':'personal';
+      let cat = newCategories.find(c=>c.name.toLowerCase()===(norm.category||'').toLowerCase() && c.type===type);
+      if (!cat){ cat = { id:uid(), name: norm.category||'Uncategorized', type, isDefault:false, color:PALETTE[newCategories.length%PALETTE.length] }; newCategories.push(cat); }
+      let acc = newAccounts.find(a=>a.name.toLowerCase()===(norm.account||'').toLowerCase());
+      if (!acc){ acc = { id:uid(), name: norm.account||'Imported', type:'bank', color:PALETTE[newAccounts.length%PALETTE.length], startingBalanceCents:0 }; newAccounts.push(acc); }
+      newTxns.push({ id:uid(), type, amountCents, date:dateStr, categoryId:cat.id, accountId:acc.id, note:norm.note||'', tag });
+      count++;
+    }
+    setCategories(newCategories); setAccounts(newAccounts); setTransactions(newTxns);
+    fileInput.value='';
+    showToast(`Imported ${count} transaction${count===1?'':'s'}`); render();
+  };
+  reader.readAsText(file);
+}
+
+/* ============================== ICON BADGE (letter avatar) ============================== */
+function badge(name, color, size=36){
+  const letter = (name||'?').trim().charAt(0).toUpperCase() || '?';
+  return `<div class="fd" style="width:${size}px;height:${size}px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${size*0.4}px;background:${color}22;color:${color};flex-shrink:0;">${esc(letter)}</div>`;
+}
+function accTypeIcon(type){ return (ACCOUNT_TYPES.find(t=>t.value===type)||{}).icon || 'wallet'; }
+
+/* ============================== RENDER: SMALL ATOMS ============================== */
+function segmented(value, options, onChangeFn){
+  return `<div class="inline-flex rounded-full p-1 card" style="border-radius:9999px;">
+    ${options.map(o=>`<button onclick="${onChangeFn}('${o.value}')" class="fd" style="padding:6px 14px;border-radius:9999px;font-size:13px;font-weight:600;border:none;${value==o.value ? `background:var(--gold);color:var(--gold-text);box-shadow:var(--gold-glow);` : `background:transparent;color:var(--muted);`}">${esc(o.label)}</button>`).join('')}
+  </div>`;
+}
+function progressRing(percent, color, size=52){
+  const stroke=6, r=(size-stroke)/2, c=2*Math.PI*r, pct=Math.max(0,Math.min(percent,100)), offset=c-(pct/100)*c;
+  return `<svg class="ring" width="${size}" height="${size}" style="transform:rotate(-90deg)">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="var(--ring-track)" stroke-width="${stroke}" fill="none"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" stroke="${color}" stroke-width="${stroke}" fill="none" stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+  </svg>`;
+}
+function emptyState(iconName, title, sub, actionHtml){
+  return `<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 24px;color:var(--muted);">
+    <div style="margin-bottom:12px;opacity:0.7;">${ic(iconName,32)}</div>
+    <p class="fd" style="font-weight:600;font-size:16px;color:var(--text);">${esc(title)}</p>
+    ${sub ? `<p style="font-size:14px;margin-top:4px;max-width:280px;">${esc(sub)}</p>` : ''}
+    ${actionHtml ? `<div style="margin-top:16px;">${actionHtml}</div>` : ''}
+  </div>`;
+}
+function statChip(label, value, color){
+  return `<div class="card" style="border-radius:16px;padding:12px;text-align:center;">
+    <p style="font-size:11px;font-weight:500;color:var(--muted);">${esc(label)}</p>
+    <p class="fd tab-nums" style="font-weight:600;font-size:14px;margin-top:2px;color:${color};">${esc(value)}</p>
+  </div>`;
+}
+function txnRow(t, D, opts){
+  opts = opts || {};
+  const isIncome = t.type==='income'; const color = isIncome? 'var(--jade)':'var(--rust)';
+  const cat = D.catById[t.categoryId], acc = D.accById[t.accountId];
+  return `<div onclick="openEditTxn('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-left:3px solid ${color};${opts.last?'':'border-bottom:1px dashed var(--border);'}">
+    ${badge(cat?cat.name:'?', cat?cat.color:'#8A8F98', 36)}
+    <div style="min-width:0;flex:1;">
+      <p style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.note || (cat?cat.name:'Uncategorized'))}</p>
+      <p style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(cat?cat.name:'')} · ${esc(acc?acc.name:'')}
+        ${t.tag==='business' ? `<span style="margin-left:4px;padding:1px 6px;border-radius:9999px;font-size:10px;background:var(--gold-soft);color:var(--gold-soft-text);">Business</span>` : ''}
+      </p>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+      ${opts.showActions ? `
+        <button onclick="event.stopPropagation();openDuplicateTxn('${t.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('copy',14)}</button>
+        <button onclick="event.stopPropagation();askDeleteTxn('${t.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('trash',14)}</button>
+      ` : ''}
+      <p class="fd tab-nums" style="font-weight:600;font-size:14px;color:${color};">${isIncome?'+':'-'}${formatMYR(t.amountCents).replace('-','')}</p>
+    </div>
+  </div>`;
+}
+
+/* ============================== RENDER: PAGES ============================== */
+function renderDashboard(D){
+  const recent = state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  return `
+  <div style="padding:24px 16px 0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:var(--gold);">${ic('lock',16,'var(--gold)')}</span>
+          <p class="fd" style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">Vault<span style="color:var(--gold);">X</span></p>
+        </div>
+        <h1 class="fd" style="font-size:24px;font-weight:700;margin:2px 0 0;">Overview</h1>
+      </div>
+      <button onclick="toggleTheme()" class="card" style="padding:10px;border-radius:9999px;border:none;color:var(--text);">${ic(state.settings.theme==='dark'?'sun':'moon',18)}</button>
+    </div>
+
+    ${segmented(state.settings.activeTag, [{value:'all',label:'All'},{value:'personal',label:'Personal'},{value:'business',label:'Business'}], 'setActiveTag')}
+
+    <div class="card" style="border-radius:24px;padding:20px;margin-top:16px;">
+      <p style="font-size:14px;color:var(--muted);">Total balance across all accounts</p>
+      <p class="fd tab-nums" style="font-weight:700;font-size:30px;margin-top:4px;">${formatMYR(D.netTotal)}</p>
+      <div style="display:flex;gap:16px;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="color:var(--jade);">${ic('trendUp',15,'var(--jade)')}</span><span class="tab-nums" style="font-size:14px;">${formatMYR(D.monthIncome)}</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="color:var(--rust);">${ic('trendDown',15,'var(--rust)')}</span><span class="tab-nums" style="font-size:14px;">${formatMYR(D.monthExpense)}</span></div>
+      </div>
+    </div>
+
+    ${state.accounts.length===0 ? emptyState('wallet','No accounts yet','Add your first account from the More tab to start tracking.') : `
+      <div class="no-scroll" style="display:flex;gap:12px;margin-top:16px;overflow-x:auto;padding-bottom:4px;">
+        ${state.accounts.map(a=>`
+          <div class="card" style="min-width:140px;border-radius:16px;padding:16px;">
+            <div style="margin-bottom:12px;">${badge(a.name, a.color, 32)}</div>
+            <p style="font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</p>
+            <p class="fd tab-nums" style="font-weight:600;margin-top:2px;">${formatMYR(D.balances[a.id])}</p>
+          </div>
+        `).join('')}
+      </div>
+    `}
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;">
+      ${statChip('Income', formatMYR(D.monthIncome), 'var(--jade)')}
+      ${statChip('Expense', formatMYR(D.monthExpense), 'var(--rust)')}
+      ${statChip('Net', formatMYR(D.monthNet,true), D.monthNet>=0?'var(--jade)':'var(--rust)')}
+    </div>
+
+    ${D.overBudget.length>0 ? `
+      <div style="margin-top:16px;border-radius:16px;padding:14px;background:var(--rust-soft);color:var(--rust-soft-text);">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;margin-bottom:4px;">${ic('alert',16)} Over budget this month</div>
+        <p style="font-size:13px;">${esc(D.overBudget.map(b=>b.cat.name).join(', '))}</p>
+      </div>
+    ` : ''}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px;margin-bottom:8px;">
+      <h2 class="fd" style="font-weight:600;font-size:16px;">Recent transactions</h2>
+      <button onclick="setTab('transactions')" style="background:none;border:none;font-size:13px;font-weight:600;color:var(--gold);">See all</button>
+    </div>
+    ${recent.length===0 ? emptyState('list','No transactions yet','Tap the + button to log your first one.') :
+      `<div class="card" style="border-radius:16px;overflow:hidden;">${recent.map((t,i)=>txnRow(t,D,{last:i===recent.length-1})).join('')}</div>`}
+  </div>`;
+}
+
+function renderTransactionsPage(D){
+  const txns = filteredTxns(D); const groups = groupByDate(txns);
+  const activeFilterCount = ['accountId','categoryId','tag','type'].filter(k=>state.txnFilter[k]!=='all').length + (state.txnFilter.range!=='all'?1:0);
+  return `
+  <div style="padding:24px 16px 0;">
+    <h1 class="fd" style="font-size:24px;font-weight:700;margin-bottom:16px;">Transactions</h1>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div class="input" style="flex:1;display:flex;align-items:center;gap:8px;border-radius:12px;padding:10px 12px;">
+        ${ic('search',16,'var(--muted)')}
+        <input id="vx-search-input" value="${esc(state.txnFilter.search)}" oninput="tfSet('search', this.value)" placeholder="Search notes, category, account…" style="background:transparent;border:none;outline:none;font-size:14px;flex:1;color:var(--text);" />
+      </div>
+      <button onclick="openTxnFilter()" class="card" style="position:relative;padding:10px;border-radius:12px;border:none;color:var(--text);">
+        ${ic('sliders',18)}
+        ${activeFilterCount>0 ? `<span class="fd" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:9999px;font-size:10px;display:flex;align-items:center;justify-content:center;background:var(--gold);color:var(--gold-text);">${activeFilterCount}</span>` : ''}
+      </button>
+    </div>
+    ${groups.length===0 ? emptyState('search','No transactions found','Try adjusting your search or filters.') :
+      groups.map(g=>`
+        <div style="margin-bottom:16px;">
+          <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:8px;">${esc(niceDate(g.date))}</p>
+          <div class="card" style="border-radius:16px;overflow:hidden;">
+            ${g.items.map((t,i)=>txnRow(t,D,{showActions:true,last:i===g.items.length-1})).join('')}
+          </div>
+        </div>
+      `).join('')}
+  </div>`;
+}
+
+function renderTxnFilterSheetContent(){
+  const D = derive();
+  return `
+    <div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Date range</label>
+        <select class="input" style="width:100%;border-radius:12px;padding:10px 12px;" onchange="tfSet('range', this.value)">
+          ${[['all','All time'],['thisMonth','This month'],['lastMonth','Last month'],['last3','Last 3 months'],['last6','Last 6 months']].map(([v,l])=>`<option value="${v}" ${state.txnFilter.range===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Type</label>
+        <select class="input" style="width:100%;border-radius:12px;padding:10px 12px;" onchange="tfSet('type', this.value)">
+          ${[['all','Income & expense'],['income','Income only'],['expense','Expense only']].map(([v,l])=>`<option value="${v}" ${state.txnFilter.type===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Account</label>
+        <select class="input" style="width:100%;border-radius:12px;padding:10px 12px;" onchange="tfSet('accountId', this.value)">
+          <option value="all" ${state.txnFilter.accountId==='all'?'selected':''}>All accounts</option>
+          ${state.accounts.map(a=>`<option value="${a.id}" ${state.txnFilter.accountId===a.id?'selected':''}>${esc(a.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Category</label>
+        <select class="input" style="width:100%;border-radius:12px;padding:10px 12px;" onchange="tfSet('categoryId', this.value)">
+          <option value="all" ${state.txnFilter.categoryId==='all'?'selected':''}>All categories</option>
+          ${state.categories.map(c=>`<option value="${c.id}" ${state.txnFilter.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Tag</label>
+        ${segmented(state.txnFilter.tag, [{value:'all',label:'All'},{value:'personal',label:'Personal'},{value:'business',label:'Business'}], 'tfSet.bind(null,\'tag\')')}
+      </div>
+      <button onclick="closeTxnFilter()" class="fd btn-primary" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;margin-top:8px;">Apply filters</button>
+      <button onclick="tfClear()" class="chip" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;margin-top:8px;">Clear all</button>
+    </div>`;
+}
+
+function renderBudgetsPage(D){
+  const withBudget = new Set(D.budgetStatus.map(b=>b.cat.id));
+  const withoutBudget = D.expenseCats.filter(c=>!withBudget.has(c.id));
+  return `
+  <div style="padding:24px 16px 0;">
+    <h1 class="fd" style="font-size:24px;font-weight:700;margin-bottom:4px;">Budgets</h1>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">Monthly limits per category, based on ${state.settings.activeTag==='all'?'all transactions':state.settings.activeTag+' transactions'}.</p>
+    ${segmented(state.settings.activeTag, [{value:'all',label:'All'},{value:'personal',label:'Personal'},{value:'business',label:'Business'}], 'setActiveTag')}
+
+    ${D.budgetStatus.length===0 ? `<div style="margin-top:16px;">${emptyState('budget','No budgets set','Set a monthly limit on any category below to start tracking.')}</div>` : ''}
+
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px;">
+      ${D.budgetStatus.map(({cat,spent,limit,pct})=>`
+        <div class="card" style="border-radius:16px;padding:16px;display:flex;align-items:center;gap:16px;">
+          ${progressRing(pct, pct>=100 ? 'var(--rust)':'var(--jade)')}
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <p style="font-weight:500;font-size:14px;">${esc(cat.name)}</p>
+              ${pct>=100 ? `<span style="font-size:10px;padding:2px 6px;border-radius:9999px;font-weight:600;background:var(--rust-soft);color:var(--rust-soft-text);">Over</span>` : ''}
+            </div>
+            <p class="tab-nums" style="font-size:12px;margin-top:4px;color:var(--muted);">${formatMYR(spent)} of ${formatMYR(limit)}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <button onclick="openBudgetEdit('${cat.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('edit',14)}</button>
+            <button onclick="removeBudget('${cat.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('trash',14)}</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    ${withoutBudget.length>0 ? `
+      <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin:24px 0 8px;">Add a budget</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${withoutBudget.map(c=>`<button onclick="openBudgetEdit('${c.id}')" class="card" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:none;font-size:14px;font-weight:500;color:var(--text);">${badge(c.name,c.color,24)} ${esc(c.name)}</button>`).join('')}
+      </div>
+    ` : ''}
+  </div>`;
+}
+
+function renderReportsPage(D){
+  const reportTxns = state.transactions.filter(t=>inRange(t.date, state.reportRange) && matchesTag(t, state.settings.activeTag));
+  const pieMap = {}; reportTxns.filter(t=>t.type==='expense').forEach(t=>{ pieMap[t.categoryId]=(pieMap[t.categoryId]||0)+t.amountCents; });
+  const pieData = Object.entries(pieMap).map(([catId,val],i)=>({ name: D.catById[catId]?D.catById[catId].name:'Uncategorized', color: D.catById[catId]?D.catById[catId].color:PALETTE[i%PALETTE.length], value: val/100 }));
+  const reportIncome = reportTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amountCents,0);
+  const reportExpense = reportTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amountCents,0);
+  const net = reportIncome - reportExpense;
+  return `
+  <div style="padding:24px 16px 0;">
+    <h1 class="fd" style="font-size:24px;font-weight:700;margin-bottom:16px;">Reports</h1>
+    ${segmented(state.settings.activeTag, [{value:'all',label:'All'},{value:'personal',label:'Personal'},{value:'business',label:'Business'}], 'setActiveTag')}
+    <div class="no-scroll" style="display:flex;gap:8px;margin-top:16px;overflow-x:auto;">
+      ${[['thisMonth','This month'],['lastMonth','Last month'],['last3','3 months'],['last6','6 months'],['all','All time']].map(([v,l])=>
+        `<button onclick="setReportRange('${v}')" class="chip ${state.reportRange===v?'active':''}" style="padding:6px 14px;border-radius:9999px;font-size:13px;font-weight:500;flex-shrink:0;">${l}</button>`
+      ).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;">
+      ${statChip('Income', formatMYR(reportIncome), 'var(--jade)')}
+      ${statChip('Expense', formatMYR(reportExpense), 'var(--rust)')}
+      ${statChip('Net savings', formatMYR(net,true), net>=0?'var(--jade)':'var(--rust)')}
+    </div>
+
+    <h2 class="fd" style="font-weight:600;font-size:16px;margin-top:24px;margin-bottom:8px;">Spending by category</h2>
+    ${pieData.length===0 ? emptyState('chart','No expenses in this range') : `
+      <div class="card" style="border-radius:16px;padding:12px;">
+        <div style="height:240px;"><canvas id="vx-pie"></canvas></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px;">
+          ${pieData.map(d=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+            <span style="width:10px;height:10px;border-radius:9999px;flex-shrink:0;background:${d.color};"></span>
+            <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.name)}</span>
+            <span class="tab-nums" style="font-weight:500;">${formatMYR(d.value*100)}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    `}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px;margin-bottom:8px;">
+      <h2 class="fd" style="font-weight:600;font-size:16px;">Income vs expense trend</h2>
+      ${segmented(state.trendMonths, [{value:6,label:'6mo'},{value:12,label:'12mo'}], 'setTrendMonths')}
+    </div>
+    <div class="card" style="border-radius:16px;padding:12px;margin-bottom:16px;">
+      <div style="height:240px;"><canvas id="vx-bar"></canvas></div>
+    </div>
+  </div>`;
+}
+function setReportRange(v){ state.reportRange=v; render(); }
+function setTrendMonths(v){ state.trendMonths=Number(v); render(); }
+
+function mountCharts(D){
+  if (typeof Chart === 'undefined'){
+    ['vx-pie','vx-bar'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el && el.parentElement) el.parentElement.innerHTML = `<div style="padding:24px;text-align:center;font-size:13px;color:var(--muted);">Charts couldn't load (no connection to the chart library). Check your internet connection and reload.</div>`;
+    });
+    return;
+  }
+  const reportTxns = state.transactions.filter(t=>inRange(t.date, state.reportRange) && matchesTag(t, state.settings.activeTag));
+  const pieMap = {}; reportTxns.filter(t=>t.type==='expense').forEach(t=>{ pieMap[t.categoryId]=(pieMap[t.categoryId]||0)+t.amountCents; });
+  const pieEntries = Object.entries(pieMap).map(([catId,val])=>({ name: D.catById[catId]?D.catById[catId].name:'Uncategorized', color: D.catById[catId]?D.catById[catId].color:'#8A8F98', value: val/100 }));
+
+  if (charts.pie){ charts.pie.destroy(); charts.pie=null; }
+  const pieCanvas = document.getElementById('vx-pie');
+  if (pieCanvas && pieEntries.length>0){
+    charts.pie = new Chart(pieCanvas, {
+      type:'doughnut',
+      data:{ labels: pieEntries.map(d=>d.name), datasets:[{ data: pieEntries.map(d=>d.value), backgroundColor: pieEntries.map(d=>d.color), borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(ctx)=>` RM ${ctx.parsed.toFixed(2)}` } } } }
+    });
+  }
+
+  if (charts.bar){ charts.bar.destroy(); charts.bar=null; }
+  const barCanvas = document.getElementById('vx-bar');
+  if (barCanvas){
+    const curYM = monthKey(todayStr());
+    const months = []; for (let i=state.trendMonths-1;i>=0;i--) months.push(addMonths(curYM,-i));
+    const incomes = months.map(ym=>state.transactions.filter(t=>monthKey(t.date)===ym && t.type==='income' && matchesTag(t,state.settings.activeTag)).reduce((s,t)=>s+t.amountCents,0)/100);
+    const expenses = months.map(ym=>state.transactions.filter(t=>monthKey(t.date)===ym && t.type==='expense' && matchesTag(t,state.settings.activeTag)).reduce((s,t)=>s+t.amountCents,0)/100);
+    const gridColor = cssVar('--border'), textColor = cssVar('--muted'), jade = cssVar('--jade'), rust = cssVar('--rust');
+    charts.bar = new Chart(barCanvas, {
+      type:'bar',
+      data:{ labels: months.map(ymLabel), datasets:[
+        { label:'Income', data:incomes, backgroundColor:jade, borderRadius:4 },
+        { label:'Expense', data:expenses, backgroundColor:rust, borderRadius:4 },
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        scales:{ x:{ ticks:{color:textColor,font:{size:11}}, grid:{color:gridColor} }, y:{ ticks:{color:textColor,font:{size:11}}, grid:{color:gridColor} } },
+        plugins:{ legend:{ labels:{ color: cssVar('--text'), font:{size:12} } }, tooltip:{ callbacks:{ label:(ctx)=>` ${ctx.dataset.label}: RM ${ctx.parsed.y.toFixed(2)}` } } }
+      }
+    });
+  }
+}
+
+function renderMorePage(){
+  const items = [
+    { key:'accounts', icon:'wallet', label:'Accounts', sub:`${state.accounts.length} account${state.accounts.length===1?'':'s'}` },
+    { key:'categories', icon:'folder', label:'Categories', sub:`${state.categories.length} categories` },
+    { key:'recurring', icon:'refresh', label:'Recurring transactions', sub:`${state.recurringRules.length} active rule${state.recurringRules.length===1?'':'s'}` },
+    { key:'networth', icon:'scale', label:'Net worth tracker', sub:'Assets vs. liabilities' },
+    { key:'data', icon:'download', label:'Export & import data', sub:'CSV backup' },
+  ];
+  return `
+  <div style="padding:24px 16px 0;">
+    <h1 class="fd" style="font-size:24px;font-weight:700;margin-bottom:16px;">More</h1>
+    ${!state.storageOk ? `<div style="margin-bottom:16px;border-radius:16px;padding:12px;font-size:12px;background:var(--gold-soft);color:var(--gold-soft-text);">Your browser's local storage isn't available (private/incognito mode, or storage disabled) — your data will reset on reload.</div>` : ''}
+    <div class="card" style="border-radius:16px;overflow:hidden;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${ic(state.settings.theme==='dark'?'moon':'sun',18)}
+          <span style="font-weight:500;font-size:14px;">Dark mode</span>
+        </div>
+        <button onclick="toggleTheme()" style="width:44px;height:24px;border-radius:9999px;position:relative;border:none;background:${state.settings.theme==='dark'?'var(--gold)':'var(--border)'};">
+          <span style="position:absolute;top:2px;width:20px;height:20px;border-radius:9999px;background:#fff;transition:left .2s;left:${state.settings.theme==='dark'?'22px':'2px'};"></span>
+        </button>
+      </div>
+    </div>
+    <div class="card" style="border-radius:16px;overflow:hidden;">
+      ${items.map((it,i)=>`
+        <button onclick="setMoreView('${it.key}')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left;background:none;border:none;color:var(--text);${i===items.length-1?'':'border-bottom:1px dashed var(--border);'}">
+          <div style="color:var(--muted);">${ic(it.icon,18)}</div>
+          <div style="flex:1;">
+            <p style="font-weight:500;font-size:14px;">${esc(it.label)}</p>
+            <p style="font-size:12px;color:var(--muted);">${esc(it.sub)}</p>
+          </div>
+          ${ic('chevronRight',16,'var(--muted)')}
+        </button>
+      `).join('')}
+    </div>
+    <p style="text-align:center;font-size:12px;margin-top:32px;color:var(--muted-2);">VaultX · all data stays on this device</p>
+  </div>`;
+}
+
+function subPage(title, bodyHtml, rightHtml){
+  return `
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;padding:20px 16px 12px;position:sticky;top:0;z-index:5;background:var(--bg);">
+      <button onclick="setMoreView(null)" class="card" style="padding:7px;border-radius:9999px;border:none;color:var(--text);">${ic('chevronLeft',18)}</button>
+      <h1 class="fd" style="font-size:20px;font-weight:700;flex:1;">${esc(title)}</h1>
+      ${rightHtml||''}
+    </div>
+    <div style="padding:0 16px 24px;">${bodyHtml}</div>
+  </div>`;
+}
+
+function renderAccountsView(D){
+  const body = state.accounts.length===0
+    ? emptyState('wallet','No accounts yet', null, `<button onclick="openNewAccount()" class="fd btn-primary" style="padding:8px 16px;border-radius:12px;font-weight:600;border:none;font-size:14px;">Add account</button>`)
+    : `<div style="display:flex;flex-direction:column;gap:8px;">
+        ${state.accounts.map(a=>`
+          <div class="card" style="display:flex;align-items:center;gap:12px;border-radius:16px;padding:14px;">
+            ${badge(a.name, a.color, 36)}
+            <div style="flex:1;min-width:0;">
+              <p style="font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</p>
+              <p class="tab-nums" style="font-size:12px;color:var(--muted);">${formatMYR(D.balances[a.id])} · ${esc((ACCOUNT_TYPES.find(t=>t.value===a.type)||{}).label||'')}</p>
+            </div>
+            <button onclick="openEditAccount('${a.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('edit',14)}</button>
+            <button onclick="deleteAccount('${a.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('trash',14)}</button>
+          </div>
+        `).join('')}
+      </div>`;
+  return subPage('Accounts', body, `<button onclick="openNewAccount()" class="fd btn-primary" style="padding:7px;border-radius:9999px;border:none;">${ic('plus',16)}</button>`);
+}
+
+function renderCategoriesView(){
+  const list = state.categories.filter(c=>c.type===state.categoriesTypeTab);
+  const body = `
+    ${segmented(state.categoriesTypeTab, [{value:'expense',label:'Expense'},{value:'income',label:'Income'}], 'setCategoriesTypeTab')}
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+      ${list.map(c=>`
+        <div class="card" style="display:flex;align-items:center;gap:12px;border-radius:16px;padding:14px;">
+          ${badge(c.name, c.color, 36)}
+          <p style="flex:1;font-weight:500;font-size:14px;">${esc(c.name)}</p>
+          ${c.isDefault ? `<span class="chip" style="font-size:10px;padding:2px 8px;border-radius:9999px;">Default</span>` : ''}
+          <button onclick="openEditCategory('${c.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('edit',14)}</button>
+          <button onclick="deleteCategory('${c.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('trash',14)}</button>
+        </div>
+      `).join('')}
+    </div>`;
+  return subPage('Categories', body, `<button onclick="openNewCategory()" class="fd btn-primary" style="padding:7px;border-radius:9999px;border:none;">${ic('plus',16)}</button>`);
+}
+
+function renderNetWorthView(D){
+  const assets = state.accounts.filter(a=>a.type!=='credit');
+  const liabilities = state.accounts.filter(a=>a.type==='credit');
+  const body = `
+    <div class="card" style="border-radius:24px;padding:20px;margin-bottom:20px;">
+      <p style="font-size:14px;color:var(--muted);">Net worth</p>
+      <p class="fd tab-nums" style="font-weight:700;font-size:30px;margin-top:4px;color:${D.netTotal>=0?'var(--jade)':'var(--rust)'};">${formatMYR(D.netTotal)}</p>
+    </div>
+    <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:8px;">Assets · ${formatMYR(D.totalAssets)}</p>
+    <div class="card" style="border-radius:16px;overflow:hidden;margin-bottom:20px;">
+      ${assets.length===0 ? `<p style="padding:16px;font-size:14px;color:var(--muted);">No asset accounts yet.</p>` :
+        assets.map((a,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;${i===assets.length-1?'':'border-bottom:1px dashed var(--border);'}">
+          <div style="display:flex;align-items:center;gap:8px;">${ic(accTypeIcon(a.type),15)}<span style="font-size:14px;font-weight:500;">${esc(a.name)}</span></div>
+          <span class="tab-nums" style="font-size:14px;color:var(--jade);">${formatMYR(D.balances[a.id])}</span>
+        </div>`).join('')}
+    </div>
+    <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:8px;">Liabilities · ${formatMYR(D.totalLiabilities)}</p>
+    <div class="card" style="border-radius:16px;overflow:hidden;">
+      ${liabilities.length===0 ? `<p style="padding:16px;font-size:14px;color:var(--muted);">No liability accounts (credit cards) yet.</p>` :
+        liabilities.map((a,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;${i===liabilities.length-1?'':'border-bottom:1px dashed var(--border);'}">
+          <div style="display:flex;align-items:center;gap:8px;">${ic(accTypeIcon(a.type),15)}<span style="font-size:14px;font-weight:500;">${esc(a.name)}</span></div>
+          <span class="tab-nums" style="font-size:14px;color:var(--rust);">${formatMYR(D.balances[a.id])}</span>
+        </div>`).join('')}
+    </div>`;
+  return subPage('Net worth', body);
+}
+
+function renderRecurringView(D){
+  const body = state.recurringRules.length===0
+    ? emptyState('refresh','No recurring transactions','Turn on "Repeat monthly" when adding a transaction (e.g. salary or rent) to create one.')
+    : `<div style="display:flex;flex-direction:column;gap:8px;">
+        ${state.recurringRules.map(r=>`
+          <div class="card" style="display:flex;align-items:center;gap:12px;border-radius:16px;padding:14px;">
+            ${badge(D.catById[r.categoryId]?D.catById[r.categoryId].name:'?', r.type==='income'?'#34C795':'#E86A4C', 36)}
+            <div style="flex:1;min-width:0;">
+              <p style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.note || (D.catById[r.categoryId]?D.catById[r.categoryId].name:''))}</p>
+              <p style="font-size:12px;color:var(--muted);">Monthly on day ${r.dayOfMonth} · ${esc(D.accById[r.accountId]?D.accById[r.accountId].name:'')}</p>
+            </div>
+            <p class="fd tab-nums" style="font-weight:500;font-size:14px;">${formatMYR(r.amountCents)}</p>
+            <button onclick="removeRecurringRule('${r.id}')" class="icon-btn" style="background:none;border:none;padding:6px;border-radius:9999px;">${ic('trash',14)}</button>
+          </div>
+        `).join('')}
+      </div>`;
+  return subPage('Recurring transactions', body);
+}
+
+function renderDataView(){
+  const body = `
+    <div class="card" style="border-radius:16px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">${ic('download',18)}<p style="font-weight:500;font-size:14px;">Export to CSV</p></div>
+      <p style="font-size:14px;margin-bottom:12px;color:var(--muted);">Download all ${state.transactions.length} transaction${state.transactions.length===1?'':'s'} as a CSV file for backup or use in a spreadsheet.</p>
+      <button onclick="handleExport()" class="fd btn-primary" style="width:100%;padding:10px;border-radius:12px;font-weight:600;border:none;">Export CSV</button>
+    </div>
+    <div class="card" style="border-radius:16px;padding:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">${ic('upload',18)}<p style="font-weight:500;font-size:14px;">Import from CSV</p></div>
+      <p style="font-size:14px;margin-bottom:12px;color:var(--muted);">CSV columns: Date, Type, Category, Account, Tag, Amount, Note. Missing accounts/categories are created automatically.</p>
+      <input id="vx-import-input" type="file" accept=".csv" style="display:none;" onchange="handleImportFile(this)" />
+      <button onclick="triggerImportFile()" class="chip" style="width:100%;padding:10px;border-radius:12px;font-weight:600;border:none;">Choose CSV file</button>
+    </div>`;
+  return subPage('Export & import', body);
+}
+
+/* ============================== QUICK ADD SHEET ============================== */
+function renderQuickAddSheetContent(D){
+  const qa = state.quickAdd;
+  const cats = qa.type==='income' ? D.incomeCats : D.expenseCats;
+  return `
+    ${segmented(qa.type, [{value:'expense',label:'Expense'},{value:'income',label:'Income'}], 'qaSetType')}
+    <div style="margin-top:16px;">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Amount (RM)</label>
+      <input id="vx-qa-amount" autofocus type="text" inputmode="decimal" value="${esc(qa.amount)}"
+        oninput="qaSetField('amount', this.value.replace(/[^0-9.]/g,''))"
+        placeholder="0.00" class="input fd tab-nums" style="width:100%;border-radius:12px;padding:12px 16px;font-size:24px;font-weight:600;" />
+    </div>
+    <div style="margin:16px 0;">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Category</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        ${cats.map(c=>`
+          <button onclick="qaSetFieldRender('categoryId','${c.id}')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px;border-radius:12px;border:1px solid var(--border);background:${qa.categoryId===c.id?'var(--gold)':'var(--surface-2)'};color:${qa.categoryId===c.id?'var(--gold-text)':'var(--text)'};">
+            ${badge(c.name, qa.categoryId===c.id?(state.settings.theme==='dark'?'#161208':'#ffffff'):c.color, 24)}
+            <span style="font-size:10px;font-weight:500;line-height:1.1;text-align:center;padding:0 2px;">${esc(c.name)}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Account</label>
+      <div class="no-scroll" style="display:flex;gap:8px;overflow-x:auto;">
+        ${state.accounts.map(a=>`
+          <button onclick="qaSetFieldRender('accountId','${a.id}')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid var(--border);flex-shrink:0;background:${qa.accountId===a.id?'var(--gold)':'var(--surface-2)'};color:${qa.accountId===a.id?'var(--gold-text)':'var(--text)'};">
+            ${ic(accTypeIcon(a.type),14)}<span style="font-size:12px;font-weight:500;">${esc(a.name)}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Date</label>
+        <input type="date" value="${esc(qa.date)}" onchange="qaSetFieldRender('date', this.value)" class="input" style="width:100%;border-radius:12px;padding:10px 12px;font-size:14px;" />
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Tag</label>
+        ${segmented(qa.tag, [{value:'personal',label:'Personal'},{value:'business',label:'Business'}], 'qaSetFieldRender.bind(null,\'tag\')')}
+      </div>
+    </div>
+    <div style="margin:16px 0;">
+      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Note (optional)</label>
+      <input id="vx-qa-note" value="${esc(qa.note)}" oninput="qaSetField('note', this.value)" placeholder="e.g. Nasi lemak with colleagues" class="input" style="width:100%;border-radius:12px;padding:10px 12px;font-size:14px;" />
+    </div>
+    ${!qa.editingId ? `
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" ${qa.repeatMonthly?'checked':''} onchange="qaSetFieldRender('repeatMonthly', this.checked)" style="width:16px;height:16px;" />
+        <span style="font-size:14px;">Repeat monthly on this day (e.g. salary, rent)</span>
+      </label>
+    ` : ''}
+  `;
+}
+
+/* ============================== MASTER RENDER ============================== */
+function render(){
+  const active = document.activeElement;
+  const activeId = active && active.id;
+  const selStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
+  const selEnd = active && typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
+
+  const app = document.getElementById('app');
+  if (!state.loaded){
+    app.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);">Loading VaultX…</div>`;
+    return;
+  }
+  const D = derive();
+
+  let pageHtml = '';
+  if (state.moreView === 'accounts') pageHtml = renderAccountsView(D);
+  else if (state.moreView === 'categories') pageHtml = renderCategoriesView();
+  else if (state.moreView === 'networth') pageHtml = renderNetWorthView(D);
+  else if (state.moreView === 'recurring') pageHtml = renderRecurringView(D);
+  else if (state.moreView === 'data') pageHtml = renderDataView();
+  else if (state.tab === 'dashboard') pageHtml = renderDashboard(D);
+  else if (state.tab === 'transactions') pageHtml = renderTransactionsPage(D);
+  else if (state.tab === 'budgets') pageHtml = renderBudgetsPage(D);
+  else if (state.tab === 'reports') pageHtml = renderReportsPage(D);
+  else if (state.tab === 'more') pageHtml = renderMorePage();
+
+  const navHtml = state.moreView ? '' : `
+    <div style="position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:center;">
+      <div class="card" style="width:100%;max-width:448px;display:flex;border-top:1px solid var(--border);border-radius:0;">
+        ${navBtn('home','Home','dashboard')}
+        ${navBtn('list','Transactions','transactions')}
+        ${navBtn('budget','Budgets','budgets')}
+        ${navBtn('chart','Reports','reports')}
+        ${navBtn('more','More','more')}
+      </div>
+    </div>
+    <div style="position:fixed;bottom:0;left:0;right:0;z-index:40;display:flex;justify-content:center;pointer-events:none;">
+      <div style="width:100%;max-width:448px;position:relative;">
+        <button onclick="openQuickAdd()" class="fd btn-primary" style="pointer-events:auto;position:absolute;bottom:76px;right:16px;border-radius:9999px;padding:16px;border:none;">${ic('plus',24, state.settings.theme==='dark'?'#161208':'#ffffff')}</button>
+      </div>
+    </div>`;
+
+  app.innerHTML = `${pageHtml}${navHtml}`;
+
+  /* modals appended after main content */
+  let modals = '';
+  if (state.quickAdd){
+    modals += sheet(state.quickAdd.editingId ? 'Edit transaction' : 'Add transaction', renderQuickAddSheetContent(D), 'closeQuickAdd()',
+      `<button onclick="saveQuickAdd()" class="fd btn-primary" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;">${state.quickAdd.editingId?'Save changes':'Add transaction'}</button>`);
+  }
+  if (state.txnFilterOpen){
+    modals += sheet('Filter transactions', renderTxnFilterSheetContent(), 'closeTxnFilter()');
+  }
+  if (state.confirmDelete){
+    const t = state.confirmDelete; const cat = D.catById[t.categoryId];
+    modals += sheet('Delete transaction?', `
+      <p style="font-size:14px;margin-bottom:16px;color:var(--muted);">This will permanently remove "${esc(t.note || (cat?cat.name:''))}" (${formatMYR(t.amountCents)}).</p>
+      <div style="display:flex;gap:12px;">
+        <button onclick="cancelDeleteTxn()" class="chip" style="flex:1;padding:10px;border-radius:12px;font-weight:500;border:none;">Cancel</button>
+        <button onclick="confirmDeleteTxn()" style="flex:1;padding:10px;border-radius:12px;font-weight:500;border:none;background:var(--rust);color:#fff;">Delete</button>
+      </div>`, 'cancelDeleteTxn()');
+  }
+  if (state.editingAccount){
+    const ea = state.editingAccount;
+    modals += sheet(ea.id?'Edit account':'New account', `
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Name</label>
+        <input id="vx-ea-name" value="${esc(ea.name)}" oninput="eaSet('name', this.value)" placeholder="e.g. Maybank Savings" class="input" style="width:100%;border-radius:12px;padding:10px 12px;font-size:14px;" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Type</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${ACCOUNT_TYPES.map(t=>`<button onclick="eaSetRender('type','${t.value}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;font-size:14px;border:1px solid var(--border);background:${ea.type===t.value?'var(--gold)':'var(--surface-2)'};color:${ea.type===t.value?'var(--gold-text)':'var(--text)'};">${ic(t.icon,15)} ${t.label}</button>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Color</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${PALETTE.slice(0,8).map(c=>`<button onclick="eaSetRender('color','${c}')" style="width:28px;height:28px;border-radius:9999px;background:${c};border:${ea.color===c?'3px solid var(--text)':'1px solid var(--border)'};"></button>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">${ea.type==='credit'?'Current amount owed (RM)':'Starting balance (RM)'}</label>
+        <input id="vx-ea-balance" type="text" inputmode="decimal" value="${esc(ea.startingBalance)}" oninput="eaSet('startingBalance', this.value.replace(/[^0-9.]/g,''))" class="input tab-nums" style="width:100%;border-radius:12px;padding:10px 12px;" placeholder="0.00" />
+      </div>
+      <button onclick="saveAccount()" class="fd btn-primary" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;">${ea.id?'Save changes':'Add account'}</button>
+    `, 'closeEditAccount()');
+  }
+  if (state.editingCategory){
+    const ec = state.editingCategory;
+    modals += sheet(ec.id?'Edit category':'New category', `
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Name</label>
+        <input id="vx-ec-name" value="${esc(ec.name)}" oninput="ecSet('name', this.value)" class="input" style="width:100%;border-radius:12px;padding:10px 12px;font-size:14px;" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Color</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${PALETTE.map(c=>`<button onclick="ecSet('color','${c}');render();" style="width:28px;height:28px;border-radius:9999px;background:${c};border:${ec.color===c?'3px solid var(--text)':'1px solid var(--border)'};"></button>`).join('')}
+        </div>
+      </div>
+      <button onclick="saveCategory()" class="fd btn-primary" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;">${ec.id?'Save changes':'Add category'}</button>
+    `, 'closeEditCategory()');
+  }
+  if (state.budgetEditing){
+    const cat = D.catById[state.budgetEditing];
+    modals += sheet('Set monthly budget', `
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin-bottom:6px;">Limit for ${esc(cat?cat.name:'')} (RM)</label>
+        <input id="vx-budget-draft" autofocus type="text" inputmode="decimal" value="${esc(state.budgetDraft)}" oninput="state.budgetDraft=this.value.replace(/[^0-9.]/g,'')" placeholder="0.00" class="input fd tab-nums" style="width:100%;border-radius:12px;padding:12px 16px;font-size:20px;font-weight:600;" />
+      </div>
+      <button onclick="saveBudgetEdit()" class="fd btn-primary" style="width:100%;padding:12px;border-radius:16px;font-weight:600;border:none;">Save budget</button>
+    `, 'closeBudgetEdit()');
+  }
+
+  app.insertAdjacentHTML('beforeend', modals);
+
+  if (state.toast){
+    app.insertAdjacentHTML('beforeend', `
+      <div style="position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:50;padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:500;" class="card">${esc(state.toast)}</div>
+    `);
+  }
+
+  if (!state.moreView && state.tab === 'reports'){ mountCharts(D); }
+
+  if (activeId){
+    const el = document.getElementById(activeId);
+    if (el){
+      el.focus();
+      if (selStart!==null && el.setSelectionRange){ try{ el.setSelectionRange(selStart, selEnd); }catch(e){} }
+    }
+  }
+}
+function navBtn(iconName, label, tabKey){
+  const active = state.tab===tabKey;
+  return `<button onclick="setTab('${tabKey}')" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px 0;background:none;border:none;color:${active?'var(--gold)':'var(--muted)'};">
+    ${ic(iconName,19)}<span style="font-size:10px;font-weight:500;">${label}</span>
+  </button>`;
+}
+function sheet(title, contentHtml, onCloseFn, footerHtml){
+  return `
+  <div style="position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;">
+    <div style="position:absolute;inset:0;background:var(--overlay);" onclick="${onCloseFn}"></div>
+    <div class="card" style="position:relative;width:100%;max-width:448px;border-radius:24px 24px 0 0;display:flex;flex-direction:column;max-height:88vh;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border);">
+        <h2 class="fd" style="font-size:18px;font-weight:600;">${esc(title)}</h2>
+        <button onclick="${onCloseFn}" style="background:none;border:none;padding:8px;border-radius:9999px;color:var(--muted);">${ic('x',20)}</button>
+      </div>
+      <div style="overflow-y:auto;padding:16px 20px;">${contentHtml}</div>
+      ${footerHtml ? `<div style="padding:16px 20px;border-top:1px solid var(--border);">${footerHtml}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+/* boot */
+init();
+</script>
+</body>
+</html>
